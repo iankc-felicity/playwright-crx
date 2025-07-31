@@ -1,0 +1,37 @@
+{
+  "name": "recorder-wxt",
+  "version": "0.15.0",
+  "description": "manifest.json description",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "dev:firefox": "wxt -b firefox",
+    "build": "wxt build",
+    "build:firefox": "wxt build -b firefox",
+    "zip": "wxt zip",
+    "zip:firefox": "wxt zip -b firefox",
+    "compile": "tsc --noEmit",
+    "postinstall": "wxt prepare"
+  },
+  "dependencies": {
+    "idb-keyval": "^6.2.1",
+    "native-file-system-adapter": "^3.0.1",
+    "playwright-crx": "0.15.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-modal-promise": "^1.0.2",
+    "web": "file:../../playwright/packages/web",
+    "yaml": "^2.6.0"
+  },
+  "devDependencies": {
+    "@types/codemirror": "^5.60.15",
+    "@types/node": "^18.19.68",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@types/wicg-file-system-access": "^2023.10.5",
+    "@wxt-dev/module-react": "^1.0.3",
+    "typescript": "^5.3.3",
+    "wxt": "0.17.0"
+  }
+}
