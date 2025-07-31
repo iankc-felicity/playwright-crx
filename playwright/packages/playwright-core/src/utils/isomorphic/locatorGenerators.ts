@@ -20,10 +20,38 @@ import { escapeWithQuotes, normalizeEscapedRegexQuotes, toSnakeCase, toTitleCase
 import type { NestedSelectorBody } from './selectorParser';
 import type { ParsedSelector } from './selectorParser';
 
-export type Language = 'javascript' | 'python' | 'java' | 'csharp' | 'jsonl';
+export type Language = 'javascript' | 'python' | 'java' | 'csharp' | 'jsonl' | 'bal';
 export type LocatorType = 'default' | 'role' | 'text' | 'label' | 'placeholder' | 'alt' | 'title' | 'test-id' | 'nth' | 'first' | 'last' | 'visible' | 'has-text' | 'has-not-text' | 'has' | 'hasNot' | 'frame' | 'frame-locator' | 'and' | 'or' | 'chain';
 export type LocatorBase = 'page' | 'locator' | 'frame-locator';
 export type Quote = '\'' | '"' | '`';
+
+export type AICompoundSelector = {
+  type: 'compound';
+  id?: string;
+  tagName?: string;
+  classNames?: {
+    className: string;
+  }[];
+  attributes?: (
+    | {
+        type: 'has';
+        name: string;
+      }
+    | {
+        type: 'identical';
+        name: string;
+        value: string;
+      }
+  )[];
+  textMatcher?: {
+    type: 'has-text';
+    text: string;
+  };
+  structural?: {
+    type: 'nth-child';
+    n: number;
+  };
+};
 
 type LocatorOptions = {
   attrs?: { name: string, value: string | boolean | number }[],
@@ -696,12 +724,150 @@ export class JsonlLocatorFactory implements LocatorFactory {
   }
 }
 
+// export class BalLocatorFactory implements LocatorFactory {
+//   generateLocator(base: LocatorBase, kind: LocatorType, body: string | RegExp, options: LocatorOptions = {}): string {
+//     console.log('BALgenerateLocator', base, kind, body, options);
+//     return JSON.stringify({
+//       kind,
+//       body,
+//       options,
+//     });
+//   }
+
+//   chainLocators(locators: string[]): string {
+//     console.log('BALchainLocators', locators);
+//     const objects = locators.map(l => JSON.parse(l));
+//     for (let i = 0; i < objects.length - 1; ++i)
+//       objects[i].next = objects[i + 1];
+//     return JSON.stringify(objects[0]);
+//   }
+// }
+
+export class BalLocatorFactory implements LocatorFactory {
+  generateLocator(base: LocatorBase, kind: LocatorType, body: string | RegExp, options: LocatorOptions = {}): string {
+    console.log('BALgenerateLocator', base, kind, body, options);
+    const selector = this.mapKindToSelector(kind, body, options);
+    return JSON.stringify({ selector });
+  }
+
+  chainLocators(locators: string[]): string {
+    console.log('BALchainLocators', locators);
+    const chain = locators.map(l => JSON.parse(l).selector);
+    let result = chain[chain.length - 1];
+    for (let i = chain.length - 2; i >= 0; i--) {
+      result = {
+        type: 'complex',
+        leftSelector: chain[i],
+        operand: 'descendant',
+        rightSelector: result,
+      };
+    }
+    return JSON.stringify({ selector: result });
+  }
+
+  private mapKindToSelector(kind: LocatorType, body: string | RegExp, options: LocatorOptions): AICompoundSelector {
+    const safeText = (text: string | RegExp): string =>
+      typeof text === 'string' ? text : text.source;
+
+    switch (kind) {
+      case 'text':
+      case 'has-text':
+        return {
+          type: 'compound',
+          textMatcher: {
+            type: 'has-text',
+            text: safeText(body),
+          },
+        };
+
+      case 'test-id':
+        return {
+          type: 'compound',
+          attributes: [{
+            type: 'identical',
+            name: 'data-testid',
+            value: safeText(body),
+          }],
+        };
+
+      case 'label':
+        return {
+          type: 'compound',
+          attributes: [{
+            type: 'identical',
+            name: 'aria-label',
+            value: safeText(body),
+          }],
+        };
+
+      case 'placeholder':
+        return {
+          type: 'compound',
+          attributes: [{
+            type: 'identical',
+            name: 'placeholder',
+            value: safeText(body),
+          }],
+        };
+
+      case 'alt':
+        return {
+          type: 'compound',
+          attributes: [{
+            type: 'identical',
+            name: 'alt',
+            value: safeText(body),
+          }],
+        };
+
+      case 'title':
+        return {
+          type: 'compound',
+          attributes: [{
+            type: 'identical',
+            name: 'title',
+            value: safeText(body),
+          }],
+        };
+
+      case 'role':
+        const attributes = (options.attrs ?? []).map(attr => ({
+          type: 'identical',
+          name: attr.name,
+          value: String(attr.value),
+        }));
+        if (typeof options.name === 'string') {
+          attributes.push({
+            type: 'identical',
+            name: 'name',
+            value: options.name,
+          });
+        }
+        return {
+          type: 'compound',
+          attributes: attributes as AICompoundSelector['attributes'],
+        };
+
+      default:
+        return {
+          type: 'compound',
+          attributes: [{
+            type: 'identical',
+            name: 'selector',
+            value: safeText(body),
+          }],
+        };
+    }
+  }
+}
+
 const generators: Record<Language, new (preferredQuote?: Quote) => LocatorFactory> = {
   javascript: JavaScriptLocatorFactory,
   python: PythonLocatorFactory,
   java: JavaLocatorFactory,
   csharp: CSharpLocatorFactory,
   jsonl: JsonlLocatorFactory,
+  bal: BalLocatorFactory,
 };
 
 function isRegExp(obj: any): obj is RegExp {

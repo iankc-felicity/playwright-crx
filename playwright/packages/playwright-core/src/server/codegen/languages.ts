@@ -19,6 +19,7 @@ import { JavaLanguageGenerator } from './java';
 import { JavaScriptLanguageGenerator } from './javascript';
 import { JsonlLanguageGenerator } from './jsonl';
 import { PythonLanguageGenerator } from './python';
+import { BalLanguageGenerator } from './bal';
 
 export function languageSet() {
   return new Set([
@@ -33,5 +34,6 @@ export function languageSet() {
     new CSharpLanguageGenerator('nunit'),
     new CSharpLanguageGenerator('library'),
     new JsonlLanguageGenerator(),
+    new BalLanguageGenerator(),
   ]);
 }
